@@ -39,16 +39,16 @@ class FolderCleaner():
 
         for dir in os.listdir(at_path):
             tmp_path = os.path.join(at_path, dir)
-            if (os.path.exists(os.path.join(tmp_path, u'data/message.json'))):
-                tmp_file = os.path.join(tmp_path, u'data/message.json')
+            if (os.path.exists(os.path.join(tmp_path, u'message.json'))):
+                tmp_file = os.path.join(tmp_path, u'message.json')
                 with open(str(tmp_file)) as f:
                     data = json.load(f)
                     self.createMessageList(data)
 
         for dir in os.listdir(inbox_path):
             tmp_path = os.path.join(inbox_path, dir)
-            if (os.path.exists(os.path.join(tmp_path, u'data/message.json'))):
-                tmp_file = os.path.join(tmp_path, u'data/message.json')
+            if (os.path.exists(os.path.join(tmp_path, u'message.json'))):
+                tmp_file = os.path.join(tmp_path, u'message.json')
                 with open(str(tmp_file)) as f:
                     data = json.load(f)
                     self.createMessageList(data)
