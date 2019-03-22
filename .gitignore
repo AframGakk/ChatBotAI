@@ -2,3 +2,4 @@ data/messages/
 data/data.json
 .idea/
 venv/
+saved_model.h5

@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
 from keras.models import Model
-from keras.layers import Input, LSTM, Dense
-#import os
-#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+from keras.layers import Input, LSTM, Dense, Embedding
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # The datasets
 
@@ -13,6 +13,7 @@ dataset = pd.read_json('data/data.json')
 
 print("Dataset length: " + str(len(dataset)))
 dataset = dataset.drop(columns=["timestamp_send", "timestamp_recieved"], axis=1)
+dataset = dataset[:500]
 
 
 latent_dim = 256  # Latent dimensionality of the encoding space.
@@ -72,7 +73,8 @@ for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
         encoder_input_data[i, t, input_token_index[word]] = 1.
     for t, word in enumerate(target_text.split()):
         # decoder_target_data is ahead of decoder_input_data by one timestep
-        decoder_input_data[i, t, target_token_index[word]] = 1.
+        #decoder_input_data[i, t, target_token_index[word]] = 1.
+        decoder_input_data[i, t] = target_token_index[word]
         if t > 0:
             # decoder_target_data will be ahead by one timestep
             # and will not include the start character.
@@ -80,21 +82,25 @@ for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
 
 
 # Define an input sequence and process it.
-encoder_inputs = Input(shape=(None, num_encoder_tokens))
+encoder_inputs = Input(shape=(None,))
+x = Embedding(num_encoder_tokens, latent_dim)(encoder_inputs)
 encoder = LSTM(latent_dim, return_state=True)
-encoder_outputs, state_h, state_c = encoder(encoder_inputs)
-# We discard `encoder_outputs` and only keep the states.
+encoder_outputs, state_h, state_c = encoder(x)
+
 encoder_states = [state_h, state_c]
 
-
 # Set up the decoder, using `encoder_states` as initial state.
-decoder_inputs = Input(shape=(None, num_decoder_tokens))
+decoder_inputs = Input(shape=(None,))
 # We set up our decoder to return full output sequences,
 # and to return internal states as well. We don't use the
 # return states in the training model, but we will use them in inference.
+dex = Embedding(num_decoder_tokens, latent_dim)
+final_dex = dex(decoder_inputs)
+
 decoder_lstm = LSTM(latent_dim, return_sequences=True, return_state=True)
-decoder_outputs, _, _ = decoder_lstm(decoder_inputs,
-                                     initial_state=encoder_states)
+decoder_outputs, _, _ = decoder_lstm(final_dex, initial_state=encoder_states)
+
+
 decoder_dense = Dense(num_decoder_tokens, activation='softmax')
 decoder_outputs = decoder_dense(decoder_outputs)
 
@@ -104,13 +110,20 @@ decoder_outputs = decoder_dense(decoder_outputs)
 model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
 
 
-# Run training
-model.compile(optimizer='rmsprop', loss='categorical_crossentropy')
+# Compile & run training
+model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['acc'])
+# Note that `decoder_target_data` needs to be one-hot encoded,
+# rather than sequences of integers like `decoder_input_data`!
 model.fit([encoder_input_data, decoder_input_data], decoder_target_data,
           batch_size=batch_size,
           epochs=epochs,
           validation_split=0.2)
+
+
 # Save model
 model.save('s2s.h5')
 print("=================")
 print("DONE")
+
+
+
