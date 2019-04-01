@@ -6,7 +6,7 @@ with open('data/data.json', 'r') as myfile:
     # parse file
     obj = json.loads(data)
 
-trainer = ChatBotTrainer(obj, epochs=1)
+trainer = ChatBotTrainer(obj, epochs=20)
 trainer.preProcess()
 trainer.composeModel()
 trainer.train()
