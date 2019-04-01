@@ -6,5 +6,7 @@ saved_model.h5
 SlackNotification.py
 notes.txt
 eng-fra/
-model.h5
+data/*.h5
 model.json
+data/isl.json
+*.h5

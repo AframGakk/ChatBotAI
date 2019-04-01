@@ -21,6 +21,7 @@ class ChatBot:
 
         self.preProcess()
 
+
     def loadModel(self):
         # load json and create model
         json_file = open('model.json', 'r')
@@ -157,7 +158,7 @@ class ChatBot:
         self.loadModel()
 
         # TODO: encoder model summary í log skrá
-        self.encoder_model = self.model
+        self.encoder_model = Model(encoder_inputs, encoder_states)
         # encoder_model.summary()
 
         decoder_state_input_h = Input(shape=(50,))
@@ -219,8 +220,8 @@ class ChatBot:
         return decoded_sentence
 
     def send(self, message):
-        input_seq = encoder_input_data[seq_index: seq_index + 1]
-        decoded_sentence = decode_sequence(input_seq)
+        #input_seq = self.encoder_input_data[self.seq_index: self.seq_index + 1]
+        decoded_sentence = self.decoder(message)
         print('-')
-        print('Input sentence:', dataset.content_sent[seq_index: seq_index + 1])
+        print('Input sentence:', self.dataset.content_sent[self.seq_index: self.seq_index + 1])
         print('Decoded sentence:', decoded_sentence)

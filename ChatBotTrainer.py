@@ -26,6 +26,10 @@ class ChatBotTrainer:
         self.dataset = pd.DataFrame([self.data[u'content_recieved'], self.data[u'content_sent']]).T
         self.dataset.columns = ['content_recieved', 'content_sent']
 
+        # TODO: test
+        print(self.dataset.sample(10))
+        print("Total: " , len(self.dataset))
+
 
     def cleanMessages(self):
         # clean up icelandic letters from JSON
@@ -42,22 +46,37 @@ class ChatBotTrainer:
         self.dataset.content_recieved = self.dataset.content_recieved.apply(lambda x: str(x).lower())
         self.dataset.content_sent = self.dataset.content_sent.apply(lambda x: str(x).lower())
 
+        # TODO: test
+        print(self.dataset.sample(10))
+
         # Take the length as 50
         self.dataset.content_recieved = self.dataset.content_recieved.apply(lambda x: re.sub("'", '', x)).apply(
             lambda x: re.sub(",", ' COMMA', x))
         self.dataset.content_sent = self.dataset.content_sent.apply(lambda x: re.sub("'", '', x)).apply(
             lambda x: re.sub(",", ' COMMA', x))
 
+        # TODO: test
+        print(self.dataset.sample(10))
+
         exclude = set(string.punctuation)
         self.dataset.content_recieved = self.dataset.content_recieved.apply(
             lambda x: ''.join(ch for ch in x if ch not in exclude))
         self.dataset.content_sent = self.dataset.content_sent.apply(lambda x: ''.join(ch for ch in x if ch not in exclude))
 
+        # TODO: test
+        print(self.dataset.sample(10))
+
         remove_digits = str.maketrans('', '', digits)
         self.dataset.content_recieved = self.dataset.content_recieved.apply(lambda x: x.translate(remove_digits))
         self.dataset.content_sent = self.dataset.content_sent.apply(lambda x: x.translate(remove_digits))
 
+        # TODO: test
+        print(self.dataset.sample(10))
+
         self.dataset.content_sent = self.dataset.content_sent.apply(lambda x: 'START_ ' + x + ' _END')
+
+        # TODO: test
+        print(self.dataset.sample(10))
 
         input_words = set()
         target_words = set()
@@ -95,13 +114,13 @@ class ChatBotTrainer:
 
         self.encoder_input_data = np.zeros(
             (len(self.dataset.content_recieved),max_encoder_seq_length),
-            dtype='float32')
+            dtype='float16')
         self.decoder_input_data = np.zeros(
             (len(self.dataset.content_sent), max_decoder_seq_length),
-            dtype='float32')
+            dtype='float16')
         self.decoder_target_data = np.zeros(
             (len(self.dataset.content_sent), max_decoder_seq_length, self.num_decoder_tokens),
-            dtype='float32')
+            dtype='float16')
 
         for i, (input_text, target_text) in enumerate(zip(self.dataset.content_recieved, self.dataset.content_sent)):
             for t, word in enumerate(input_text.split()):
