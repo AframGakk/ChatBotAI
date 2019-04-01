@@ -3,3 +3,8 @@ data/data.json
 .idea/
 venv/
 saved_model.h5
+SlackNotification.py
+notes.txt
+eng-fra/
+model.h5
+model.json

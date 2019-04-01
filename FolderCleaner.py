@@ -3,7 +3,7 @@ import json
 
 class FolderCleaner():
 
-    def __init__(self, name):
+    def __init__(self, name ):
         self.name = name
         self.fullList = {"timestamp_recieved": {}, "content_recieved": {}, "timestamp_send": {}, "content_sent": {}}
         self.index = 0
@@ -17,18 +17,20 @@ class FolderCleaner():
             if next:
                 if "sender_name" in message:
                     if not message["sender_name"] == self.name:
-                        self.fullList["timestamp_recieved"][str(self.index)] = message["timestamp_ms"]
-                        self.fullList["content_recieved"][str(self.index)] = message["content"]
-                        self.index += 1
+                        if len(message["content"]) < 11:
+                            self.fullList["timestamp_recieved"][str(self.index)] = message["timestamp_ms"]
+                            self.fullList["content_recieved"][str(self.index)] = message["content"]
+                            self.index += 1
 
                     next = False
 
             if "sender_name" in message:
                 if (message['sender_name'] == self.name):
                     if (('content' in message) and ('timestamp_ms' in message)):
-                        next = True
-                        self.fullList["timestamp_send"][str(self.index)] = message["timestamp_ms"]
-                        self.fullList["content_sent"][str(self.index)] = message["content"]
+                        if len(message["content"]):
+                            next = True
+                            self.fullList["timestamp_send"][str(self.index)] = message["timestamp_ms"]
+                            self.fullList["content_sent"][str(self.index)] = message["content"]
 
 
 
