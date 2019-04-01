@@ -24,12 +24,12 @@ class ChatBotTrainer:
 
         # load the dataset to pandas dataframe
         self.dataset = pd.DataFrame([self.data[u'content_recieved'], self.data[u'content_sent']]).T
+        #self.dataset = pd.DataFrame([self.data[u'content_recieved'], self.data[u'content_sent']]).T
         self.dataset.columns = ['content_recieved', 'content_sent']
 
         # TODO: test
         print(self.dataset.sample(10))
         print("Total: " , len(self.dataset))
-
 
     def cleanMessages(self):
         # clean up icelandic letters from JSON
@@ -46,37 +46,22 @@ class ChatBotTrainer:
         self.dataset.content_recieved = self.dataset.content_recieved.apply(lambda x: str(x).lower())
         self.dataset.content_sent = self.dataset.content_sent.apply(lambda x: str(x).lower())
 
-        # TODO: test
-        print(self.dataset.sample(10))
-
         # Take the length as 50
         self.dataset.content_recieved = self.dataset.content_recieved.apply(lambda x: re.sub("'", '', x)).apply(
             lambda x: re.sub(",", ' COMMA', x))
         self.dataset.content_sent = self.dataset.content_sent.apply(lambda x: re.sub("'", '', x)).apply(
             lambda x: re.sub(",", ' COMMA', x))
 
-        # TODO: test
-        print(self.dataset.sample(10))
-
         exclude = set(string.punctuation)
         self.dataset.content_recieved = self.dataset.content_recieved.apply(
             lambda x: ''.join(ch for ch in x if ch not in exclude))
         self.dataset.content_sent = self.dataset.content_sent.apply(lambda x: ''.join(ch for ch in x if ch not in exclude))
 
-        # TODO: test
-        print(self.dataset.sample(10))
-
         remove_digits = str.maketrans('', '', digits)
         self.dataset.content_recieved = self.dataset.content_recieved.apply(lambda x: x.translate(remove_digits))
         self.dataset.content_sent = self.dataset.content_sent.apply(lambda x: x.translate(remove_digits))
 
-        # TODO: test
-        print(self.dataset.sample(10))
-
         self.dataset.content_sent = self.dataset.content_sent.apply(lambda x: 'START_ ' + x + ' _END')
-
-        # TODO: test
-        print(self.dataset.sample(10))
 
         input_words = set()
         target_words = set()
@@ -168,17 +153,20 @@ class ChatBotTrainer:
         if not self.model:
             self.composeModel()
 
-        self.model.fit([self.encoder_input_data, self.decoder_input_data], self.decoder_target_data,
-                  batch_size=self.batch_size,
-                  epochs=self.epochs,
-                  validation_split=0.1)
+        try:
+            self.model.fit([self.encoder_input_data, self.decoder_input_data], self.decoder_target_data,
+                      batch_size=self.batch_size,
+                      epochs=self.epochs,
+                      validation_split=0.1)
+        except:
+            SlackNotify("The chat bot FAILED on model fitting!", "chat-bot")
 
         # Save model
         self.saveModel()
 
         self.encoder_model = Model(self.encoder_inputs, self.encoder_states)
 
-        SlackNotify("The bot has finished training", "chat-bot")
+        SlackNotify("The chat bot has finished learning", "chat-bot")
 
 
     def saveModel(self):

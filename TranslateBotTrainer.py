@@ -7,6 +7,7 @@ from MessageParser import message_parse
 from keras.layers import Input, LSTM, Embedding, Dense
 from keras.models import Model
 from SlackNotification import SlackNotify
+from keras.utils.vis_utils import plot_model
 
 from IPython.core.display import display, HTML
 display(HTML("<style>.container { width:100% !important; }</style>"))
@@ -152,10 +153,11 @@ class TranslateBotTrainer:
 
         # Save model
         self.saveModel()
+        self.summary()
 
         self.encoder_model = Model(self.encoder_inputs, self.encoder_states)
 
-        SlackNotify("The bot has finished training", "chat-bot")
+        SlackNotify("The TRANSLATE bot has finished learning\n" + self.model.summary(), "chat-bot")
 
 
     def saveModel(self):
@@ -171,5 +173,6 @@ class TranslateBotTrainer:
     def summary(self):
         if(self.model):
             print(self.model.summary())
+            plot_model(self.model, to_file='model.png', show_shapes=True)
         else:
             print("No model has been trained")

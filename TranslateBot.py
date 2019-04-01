@@ -8,12 +8,14 @@ import pandas as pd
 from keras.layers import Input, LSTM, Embedding, Dense
 from keras.models import Model
 
+
 class TranslateBot:
 
-    def __init__(self, data, embedding_size = 256):
+    def __init__(self, data, embedding_size = 256, latent_dim = 50):
         self.data = data
         self.datafile = "./data/" + data + ".txt"
         self.embedding_size = embedding_size
+        self.latent_dim = latent_dim;
 
         self.dataset = pd.read_table(self.datafile, names=['eng', 'sec'])
 
@@ -133,7 +135,7 @@ class TranslateBot:
 
         final_dex = dex(decoder_inputs)
 
-        decoder_lstm = LSTM(50, return_sequences=True, return_state=True)
+        decoder_lstm = LSTM(self.latent_dim, return_sequences=True, return_state=True)
 
         decoder_outputs, _, _ = decoder_lstm(final_dex,
                                              initial_state=encoder_states)
@@ -151,8 +153,8 @@ class TranslateBot:
         # TODO: encoder model summary í log skrá
         self.encoder_model = Model(encoder_inputs, encoder_states)
 
-        decoder_state_input_h = Input(shape=(50,))
-        decoder_state_input_c = Input(shape=(50,))
+        decoder_state_input_h = Input(shape=(self.latent_dim,))
+        decoder_state_input_c = Input(shape=(self.latent_dim,))
         decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
 
         final_dex2 = dex(decoder_inputs)

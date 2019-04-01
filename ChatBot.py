@@ -103,13 +103,13 @@ class ChatBot:
 
         self.encoder_input_data = np.zeros(
             (len(self.dataset.content_recieved),max_encoder_seq_length),
-            dtype='float32')
+            dtype='float16')
         self.decoder_input_data = np.zeros(
             (len(self.dataset.content_sent), max_decoder_seq_length),
-            dtype='float32')
+            dtype='float16')
         self.decoder_target_data = np.zeros(
             (len(self.dataset.content_sent), max_decoder_seq_length, self.num_decoder_tokens),
-            dtype='float32')
+            dtype='float16')
 
         for i, (input_text, target_text) in enumerate(zip(self.dataset.content_recieved, self.dataset.content_sent)):
             for t, word in enumerate(input_text.split()):
