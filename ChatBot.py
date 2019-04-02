@@ -25,23 +25,16 @@ class ChatBot:
 
     def loadModel(self):
         # load json and create model
-        json_file = open('model.json', 'r')
+        json_file = open('./data/model.json', 'r')
         loaded_model_json = json_file.read()
         json_file.close()
         self.model = model_from_json(loaded_model_json)
         # load weights into new model
-        self.model.load_weights("model.h5")
+        self.model.load_weights("./data/model.h5")
         print("Loaded model from disk")
 
     def cleanMessages(self):
-        '''
         # clean up icelandic letters from JSON
-        for key in self.data[u'content_sent']:
-            self.data[u'content_sent'][key] = message_parse(self.data[u'content_sent'][key])
-
-        for key in self.data[u'content_recieved']:
-            self.data[u'content_recieved'][key] = message_parse(self.data[u'content_recieved'][key])
-        '''
         for idx, item in enumerate(self.data[u'content_sent']):
             self.data[u'content_sent'][idx] = message_parse(item)
         for idx, item in enumerate(self.data[u'content_recieved']):

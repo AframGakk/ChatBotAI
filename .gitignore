@@ -1,5 +1,5 @@
 data/messages/
-data/data.json
+data/*.json
 .idea/
 venv/
 saved_model.h5
@@ -12,5 +12,6 @@ data/isl.json
 *.h5
 tmp/*.npz
 
-./__pycache__/
+__pycache__
+trainedmodels
 

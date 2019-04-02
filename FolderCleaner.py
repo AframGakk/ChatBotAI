@@ -16,17 +16,16 @@ class FolderCleaner():
         next = False
 
         for message in data["messages"]:
-            if "sender_name" in message and "content" in message and "timestamp_ms" in message:
-                if len(message['content']) < 40:
-                    if next:
-                        self.fullList["timestamp_recieved"].append(message["timestamp_ms"])
-                        self.fullList["content_recieved"].append(message["content"])
-                        next = False
-                    else:
-                        if (message['sender_name'] == self.name):
-                            next = True
-                            self.fullList["timestamp_send"].append(message["timestamp_ms"])
-                            self.fullList["content_sent"].append(message["content"])
+            if self.messageIsValid(message):
+                if next:
+                    self.fullList["timestamp_recieved"].append(message["timestamp_ms"])
+                    self.fullList["content_recieved"].append(message["content"])
+                    next = False
+                else:
+                    if (message['sender_name'] == self.name):
+                        next = True
+                        self.fullList["timestamp_send"].append(message["timestamp_ms"])
+                        self.fullList["content_sent"].append(message["content"])
         if len(self.fullList["content_sent"]) < len(self.fullList["content_recieved"]):
             self.fullList["content_recieved"].pop();
         elif len(self.fullList["content_sent"]) > len(self.fullList["content_recieved"]):
@@ -39,17 +38,16 @@ class FolderCleaner():
         switch = True
 
         for message in data["messages"]:
-            if "sender_name" in message and "content" in message and "timestamp_ms" in message:
-                if len(message['content']) < 40:
-                    if switch:
-                        self.fullList["timestamp_recieved"].append(message["timestamp_ms"])
-                        self.fullList["content_recieved"].append(message["content"])
-                        self.index += 1
-                        switch = False
-                    else:
-                        self.fullList["timestamp_send"].append(message["timestamp_ms"])
-                        self.fullList["content_sent"].append(message["content"])
-                        switch = True
+            if self.messageIsValid(message):
+                if switch:
+                    self.fullList["timestamp_recieved"].append(message["timestamp_ms"])
+                    self.fullList["content_recieved"].append(message["content"])
+                    self.index += 1
+                    switch = False
+                else:
+                    self.fullList["timestamp_send"].append(message["timestamp_ms"])
+                    self.fullList["content_sent"].append(message["content"])
+                    switch = True
         if len(self.fullList["content_sent"]) < len(self.fullList["content_recieved"]):
             self.fullList["content_recieved"].pop();
         elif len(self.fullList["content_sent"]) > len(self.fullList["content_recieved"]):
@@ -84,6 +82,15 @@ class FolderCleaner():
                     else:
                         self.createMessageListSmaller(data)
 
+
+    def messageIsValid(self, message):
+        if "sender_name" in message and "content" in message and "timestamp_ms" in message:
+            return len(message['content']) < 40 \
+                   and not "sent a photo" in message['content'] \
+                   and not "sent a video" in message["content"] \
+                   and not "sent a link" in message["content"]
+        else:
+            return False
 
     def writeToJson(self):
         with open('data/data.json', 'w') as out:

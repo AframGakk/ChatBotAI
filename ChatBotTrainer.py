@@ -10,9 +10,6 @@ from keras.models import Model
 from SlackNotification import SlackNotify
 from keras.models import model_from_json
 
-from IPython.core.display import display, HTML
-display(HTML("<style>.container { width:100% !important; }</style>"))
-
 
 class ChatBotTrainer:
 
@@ -22,16 +19,19 @@ class ChatBotTrainer:
         self.batch_size = batch_size
         self.epochs = epochs
 
+        self.cleanMessages()
 
         recieved = np.array(self.data[u'content_recieved'])
         sent = np.array(self.data[u'content_sent'])
         self.dataset = pd.DataFrame({'content_recieved': recieved, 'content_sent': sent})
 
+        self.preProcess()
+        self.composeModel()
+
 
     def cleanMessages(self):
         # clean up icelandic letters from JSON
         for idx, item in enumerate(self.data[u'content_sent']):
-            print(item)
             self.data[u'content_sent'][idx] = message_parse(item)
         for idx, item in enumerate(self.data[u'content_recieved']):
             self.data[u'content_recieved'][idx] = message_parse(item)
@@ -87,7 +87,6 @@ class ChatBotTrainer:
         target_words_list = sorted(list(target_words))
         self.num_encoder_tokens = len(input_words)
         self.num_decoder_tokens = len(target_words)
-        # del all_eng_words, all_french_words
 
         self.input_token_index = dict(
             [(word, i) for i, word in enumerate(input_words_list)])
@@ -157,8 +156,9 @@ class ChatBotTrainer:
         decoder_input_data = np.load('./tmp/decoder_input_data.npy')
         decoder_target_data = np.load('./tmp/decoder_target_data.npy')
         try:
-            if os.path.isfile('./data/model.h5') and os.path.isfile('./data/model.json'):
-                self.loadModel()
+            # if there is a trained model, keep training
+            #if os.path.isfile('./data/model.h5') and os.path.isfile('./data/model.json'):
+             #   self.loadModel()
 
             self.model.fit([encoder_input_data, decoder_input_data], decoder_target_data,
                       batch_size=self.batch_size,
@@ -167,17 +167,23 @@ class ChatBotTrainer:
         except:
             SlackNotify("The chat bot FAILED on model fitting!", "chat-bot")
 
-        # Save model
-        self.saveModel()
-
         SlackNotify("The chat bot has finished learning", "chat-bot")
+
+        # print the summary for the autoencoder
+        self.modelSummary("autoencoder", self.model)
+
+        # create the sampling model
+        self.samplingModel()
 
 
 
     def samplingModel(self):
+        if not self.model:
+            print("Please train the model with .train()")
+            return
+
         # TODO: encoder model summary í log skrá
         self.encoder_model = Model(self.encoder_inputs, self.encoder_states)
-        # encoder_model.summary()
 
         decoder_state_input_h = Input(shape=(50,))
         decoder_state_input_c = Input(shape=(50,))
@@ -201,7 +207,17 @@ class ChatBotTrainer:
 
         print("Decoder setup DONE")
 
+        #print summary for the encoder
+        self.modelSummary("Encoder", self.encoder_model)
+
+        #print summary for the decoder
+        self.modelSummary("Decoder", self.decoder_model)
+
     def decoder(self, input_seq):
+        if not self.model:
+            print("Please train the model with .train()")
+            return
+
         # Encode the input as state vectors.
         states_value = self.encoder_model.predict(input_seq)
         # Generate empty target sequence of length 1.
@@ -251,13 +267,29 @@ class ChatBotTrainer:
         for item in self.dataset.content_recieved:
             print(item)
 
-    def saveModel(self):
+    def saveModels(self):
         # serialize model to JSON
         model_json = self.model.to_json()
         with open("./data/model.json", "w") as json_file:
             json_file.write(model_json)
         # serialize weights to HDF5
         self.model.save_weights("./data/model.h5")
+        print("Saved model to disk")
+
+        # serialize model to JSON
+        model_json = self.encoder_model.to_json()
+        with open("./data/encoder_model.json", "w") as json_file:
+            json_file.write(model_json)
+        # serialize weights to HDF5
+        self.encoder_model.save_weights("./data/encoder_model.h5")
+        print("Saved model to disk")
+
+        # serialize model to JSON
+        model_json = self.decoder_model.to_json()
+        with open("./data/decoder_model.json", "w") as json_file:
+            json_file.write(model_json)
+        # serialize weights to HDF5
+        self.decoder_model.save_weights("./data/decoder_model.h5")
         print("Saved model to disk")
 
     def loadModel(self):
@@ -270,8 +302,9 @@ class ChatBotTrainer:
         self.model.load_weights("./data/model.h5")
         print("Loaded model from disk")
 
-    def summary(self):
-        if(self.model):
-            print(self.model.summary())
+    def modelSummary(self, model_name,model):
+        if(model):
+            print("Summary for model: ", model_name)
+            print(model.summary())
         else:
             print("No model has been trained")

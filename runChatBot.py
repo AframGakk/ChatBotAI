@@ -1,4 +1,5 @@
-from ChatBot import ChatBot
+#from ChatBot import ChatBot
+from ChatBot2 import ChatBot
 import json
 import numpy as np
 
@@ -8,12 +9,13 @@ with open('data/data.json', 'r') as myfile:
     obj = json.loads(data)
 
 bot = ChatBot(obj)
-bot.setupDecoder()
+#bot.setupDecoder()
 
 # running tests
 for seq_index in [344, 786, 233, 990, 1010, 539, 745, 984]:
     encoder_input_data = np.load('./tmp/encoder_input_data.npy')
     input_seq = encoder_input_data[seq_index: seq_index + 1]
+    #print('input: ', bot.dataset.content_sent.any(input_seq))
     decoded_sentence = bot.decoder(input_seq)
     print('-')
     print('Input sentence:', bot.dataset.content_recieved[seq_index])
