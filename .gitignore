@@ -10,3 +10,7 @@ data/*.h5
 model.json
 data/isl.json
 *.h5
+tmp/*.npz
+
+./__pycache__/
+

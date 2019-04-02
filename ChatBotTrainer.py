@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import os
 import string
 from string import digits
 import re
@@ -7,6 +8,7 @@ from MessageParser import message_parse
 from keras.layers import Input, LSTM, Embedding, Dense
 from keras.models import Model
 from SlackNotification import SlackNotify
+from keras.models import model_from_json
 
 from IPython.core.display import display, HTML
 display(HTML("<style>.container { width:100% !important; }</style>"))
@@ -20,24 +22,19 @@ class ChatBotTrainer:
         self.batch_size = batch_size
         self.epochs = epochs
 
-        self.cleanMessages()
 
-        # load the dataset to pandas dataframe
-        self.dataset = pd.DataFrame([self.data[u'content_recieved'], self.data[u'content_sent']]).T
-        #self.dataset = pd.DataFrame([self.data[u'content_recieved'], self.data[u'content_sent']]).T
-        self.dataset.columns = ['content_recieved', 'content_sent']
+        recieved = np.array(self.data[u'content_recieved'])
+        sent = np.array(self.data[u'content_sent'])
+        self.dataset = pd.DataFrame({'content_recieved': recieved, 'content_sent': sent})
 
-        # TODO: test
-        print(self.dataset.sample(10))
-        print("Total: " , len(self.dataset))
 
     def cleanMessages(self):
         # clean up icelandic letters from JSON
-        for key in self.data[u'content_sent']:
-            self.data[u'content_sent'][key] = message_parse(self.data[u'content_sent'][key])
-
-        for key in self.data[u'content_recieved']:
-            self.data[u'content_recieved'][key] = message_parse(self.data[u'content_recieved'][key])
+        for idx, item in enumerate(self.data[u'content_sent']):
+            print(item)
+            self.data[u'content_sent'][idx] = message_parse(item)
+        for idx, item in enumerate(self.data[u'content_recieved']):
+            self.data[u'content_recieved'][idx] = message_parse(item)
 
 
     def preProcess(self):
@@ -92,32 +89,35 @@ class ChatBotTrainer:
         self.num_decoder_tokens = len(target_words)
         # del all_eng_words, all_french_words
 
-        input_token_index = dict(
+        self.input_token_index = dict(
             [(word, i) for i, word in enumerate(input_words_list)])
-        target_token_index = dict(
+        self.target_token_index = dict(
             [(word, i) for i, word in enumerate(target_words_list)])
 
-        self.encoder_input_data = np.zeros(
+        encoder_input_data = np.zeros(
             (len(self.dataset.content_recieved),max_encoder_seq_length),
-            dtype='float16')
-        self.decoder_input_data = np.zeros(
+            dtype='float32')
+        decoder_input_data = np.zeros(
             (len(self.dataset.content_sent), max_decoder_seq_length),
-            dtype='float16')
-        self.decoder_target_data = np.zeros(
+            dtype='float32')
+        decoder_target_data = np.zeros(
             (len(self.dataset.content_sent), max_decoder_seq_length, self.num_decoder_tokens),
-            dtype='float16')
+            dtype='float32')
 
         for i, (input_text, target_text) in enumerate(zip(self.dataset.content_recieved, self.dataset.content_sent)):
             for t, word in enumerate(input_text.split()):
-                self.encoder_input_data[i, t] = input_token_index[word]
+                encoder_input_data[i, t] = self.input_token_index[word]
+
             for t, word in enumerate(target_text.split()):
                 # decoder_target_data is ahead of decoder_input_data by one timestep
-                self.decoder_input_data[i, t] = target_token_index[word]
+                decoder_input_data[i, t] = self.target_token_index[word]
                 if t > 0:
                     # decoder_target_data will be ahead by one timestep
                     # and will not include the start character.
-                    self.decoder_target_data[i, t - 1, target_token_index[word]] = 1.
-
+                    decoder_target_data[i, t - 1, self.target_token_index[word]] = 1.
+        np.save('./tmp/encoder_input_data', encoder_input_data)
+        np.save('./tmp/decoder_input_data', decoder_input_data)
+        np.save('./tmp/decoder_target_data', decoder_target_data)
 
     def composeModel(self):
         self.encoder_inputs = Input(shape=(None,))
@@ -130,18 +130,18 @@ class ChatBotTrainer:
         # Set up the decoder, using `encoder_states` as initial state.
         self.decoder_inputs = Input(shape=(None,))
 
-        dex = Embedding(self.num_decoder_tokens, self.embedding_size)
+        self.dex = Embedding(self.num_decoder_tokens, self.embedding_size)
 
-        final_dex = dex(self.decoder_inputs)
+        final_dex = self.dex(self.decoder_inputs)
 
-        decoder_lstm = LSTM(50, return_sequences=True, return_state=True)
+        self.decoder_lstm = LSTM(50, return_sequences=True, return_state=True)
 
-        decoder_outputs, _, _ = decoder_lstm(final_dex,
+        decoder_outputs, _, _ = self.decoder_lstm(final_dex,
                                              initial_state=self.encoder_states)
 
-        decoder_dense = Dense(self.num_decoder_tokens, activation='softmax')
+        self.decoder_dense = Dense(self.num_decoder_tokens, activation='softmax')
 
-        decoder_outputs = decoder_dense(decoder_outputs)
+        decoder_outputs = self.decoder_dense(decoder_outputs)
 
         self.model = Model([self.encoder_inputs, self.decoder_inputs], decoder_outputs)
 
@@ -153,31 +153,122 @@ class ChatBotTrainer:
         if not self.model:
             self.composeModel()
 
+        encoder_input_data = np.load('./tmp/encoder_input_data.npy')
+        decoder_input_data = np.load('./tmp/decoder_input_data.npy')
+        decoder_target_data = np.load('./tmp/decoder_target_data.npy')
         try:
-            self.model.fit([self.encoder_input_data, self.decoder_input_data], self.decoder_target_data,
+            if os.path.isfile('./data/model.h5') and os.path.isfile('./data/model.json'):
+                self.loadModel()
+
+            self.model.fit([encoder_input_data, decoder_input_data], decoder_target_data,
                       batch_size=self.batch_size,
                       epochs=self.epochs,
-                      validation_split=0.1)
+                      validation_split=0.08)
         except:
             SlackNotify("The chat bot FAILED on model fitting!", "chat-bot")
 
         # Save model
         self.saveModel()
 
-        self.encoder_model = Model(self.encoder_inputs, self.encoder_states)
-
         SlackNotify("The chat bot has finished learning", "chat-bot")
 
+
+
+    def samplingModel(self):
+        # TODO: encoder model summary í log skrá
+        self.encoder_model = Model(self.encoder_inputs, self.encoder_states)
+        # encoder_model.summary()
+
+        decoder_state_input_h = Input(shape=(50,))
+        decoder_state_input_c = Input(shape=(50,))
+        decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
+
+        final_dex2 = self.dex(self.decoder_inputs)
+
+        decoder_outputs2, state_h2, state_c2 = self.decoder_lstm(final_dex2, initial_state=decoder_states_inputs)
+        decoder_states2 = [state_h2, state_c2]
+        decoder_outputs2 = self.decoder_dense(decoder_outputs2)
+        self.decoder_model = Model(
+            [self.decoder_inputs] + decoder_states_inputs,
+            [decoder_outputs2] + decoder_states2)
+
+        # Reverse-lookup token index to decode sequences back to
+        # something readable.
+        self.reverse_input_char_index = dict(
+            (i, char) for char, i in self.input_token_index.items())
+        self.reverse_target_char_index = dict(
+            (i, char) for char, i in self.target_token_index.items())
+
+        print("Decoder setup DONE")
+
+    def decoder(self, input_seq):
+        # Encode the input as state vectors.
+        states_value = self.encoder_model.predict(input_seq)
+        # Generate empty target sequence of length 1.
+        target_seq = np.zeros((1, 1))
+        # Populate the first character of target sequence with the start character.
+        target_seq[0, 0] = self.target_token_index['START_']
+
+        # Sampling loop for a batch of sequences
+        # (to simplify, here we assume a batch of size 1).
+        stop_condition = False
+        decoded_sentence = ''
+        while not stop_condition:
+            output_tokens, h, c = self.decoder_model.predict(
+                [target_seq] + states_value)
+
+            # Sample a token
+            sampled_token_index = np.argmax(output_tokens[0, -1, :])
+            sampled_char = self.reverse_target_char_index[sampled_token_index]
+            decoded_sentence += ' ' + sampled_char
+
+            # Exit condition: either hit max length
+            # or find stop character.
+            if (sampled_char == '_END' or
+                    len(decoded_sentence) > 11):
+                stop_condition = True
+
+            # Update the target sequence (of length 1).
+            target_seq = np.zeros((1, 1))
+            target_seq[0, 0] = sampled_token_index
+
+            # Update states
+            states_value = [h, c]
+
+        return decoded_sentence
+
+
+    def test(self):
+        encoder_input_data = np.load('./tmp/encoder_input_data.npy')
+        for seq_index in [344, 786, 233, 990, 1010, 539, 745, 984]:
+            input_seq = encoder_input_data[seq_index: seq_index + 1]
+            decoded_sentence = self.decoder(input_seq)
+            print('-')
+            print('Input sentence:', self.dataset.content_recieved[seq_index])
+            print('Decoded sentence:', decoded_sentence)
+
+    def printAllRecieved(self):
+        for item in self.dataset.content_recieved:
+            print(item)
 
     def saveModel(self):
         # serialize model to JSON
         model_json = self.model.to_json()
-        with open("model.json", "w") as json_file:
+        with open("./data/model.json", "w") as json_file:
             json_file.write(model_json)
         # serialize weights to HDF5
-        self.model.save_weights("model.h5")
+        self.model.save_weights("./data/model.h5")
         print("Saved model to disk")
 
+    def loadModel(self):
+        # load json and create model
+        json_file = open('./data/model.json', 'r')
+        loaded_model_json = json_file.read()
+        json_file.close()
+        self.model = model_from_json(loaded_model_json)
+        # load weights into new model
+        self.model.load_weights("./data/model.h5")
+        print("Loaded model from disk")
 
     def summary(self):
         if(self.model):

@@ -1,7 +1,8 @@
 from ChatBot import ChatBot
 import json
+import numpy as np
 
-with open('data/data_villi.json', 'r') as myfile:
+with open('data/data.json', 'r') as myfile:
     data=myfile.read()
     # parse file
     obj = json.loads(data)
@@ -11,7 +12,8 @@ bot.setupDecoder()
 
 # running tests
 for seq_index in [344, 786, 233, 990, 1010, 539, 745, 984]:
-    input_seq = bot.encoder_input_data[seq_index: seq_index + 1]
+    encoder_input_data = np.load('./tmp/encoder_input_data.npy')
+    input_seq = encoder_input_data[seq_index: seq_index + 1]
     decoded_sentence = bot.decoder(input_seq)
     print('-')
     print('Input sentence:', bot.dataset.content_recieved[seq_index])

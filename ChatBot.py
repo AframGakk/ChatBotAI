@@ -16,8 +16,9 @@ class ChatBot:
 
         self.cleanMessages()
         # load the dataset to pandas dataframe
-        self.dataset = pd.DataFrame([self.data[u'content_recieved'], self.data[u'content_sent']]).T
-        self.dataset.columns = ['content_recieved', 'content_sent']
+        recieved = np.array(self.data[u'content_recieved'])
+        sent = np.array(self.data[u'content_sent'])
+        self.dataset = pd.DataFrame({'content_recieved': recieved, 'content_sent': sent})
 
         self.preProcess()
 
@@ -33,12 +34,18 @@ class ChatBot:
         print("Loaded model from disk")
 
     def cleanMessages(self):
+        '''
         # clean up icelandic letters from JSON
         for key in self.data[u'content_sent']:
             self.data[u'content_sent'][key] = message_parse(self.data[u'content_sent'][key])
 
         for key in self.data[u'content_recieved']:
             self.data[u'content_recieved'][key] = message_parse(self.data[u'content_recieved'][key])
+        '''
+        for idx, item in enumerate(self.data[u'content_sent']):
+            self.data[u'content_sent'][idx] = message_parse(item)
+        for idx, item in enumerate(self.data[u'content_recieved']):
+            self.data[u'content_recieved'][idx] = message_parse(item)
 
 
     def preProcess(self):
@@ -101,26 +108,6 @@ class ChatBot:
         self.target_token_index = dict(
             [(word, i) for i, word in enumerate(target_words_list)])
 
-        self.encoder_input_data = np.zeros(
-            (len(self.dataset.content_recieved),max_encoder_seq_length),
-            dtype='float16')
-        self.decoder_input_data = np.zeros(
-            (len(self.dataset.content_sent), max_decoder_seq_length),
-            dtype='float16')
-        self.decoder_target_data = np.zeros(
-            (len(self.dataset.content_sent), max_decoder_seq_length, self.num_decoder_tokens),
-            dtype='float16')
-
-        for i, (input_text, target_text) in enumerate(zip(self.dataset.content_recieved, self.dataset.content_sent)):
-            for t, word in enumerate(input_text.split()):
-                self.encoder_input_data[i, t] = self.input_token_index[word]
-            for t, word in enumerate(target_text.split()):
-                # decoder_target_data is ahead of decoder_input_data by one timestep
-                self.decoder_input_data[i, t] = self.target_token_index[word]
-                if t > 0:
-                    # decoder_target_data will be ahead by one timestep
-                    # and will not include the start character.
-                    self.decoder_target_data[i, t - 1, self.target_token_index[word]] = 1.
 
         print("Pre processing DONE")
 
@@ -151,11 +138,11 @@ class ChatBot:
 
         decoder_outputs = decoder_dense(decoder_outputs)
 
-        model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
-
-        model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['acc'])
+        self.model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
 
         self.loadModel()
+
+        self.model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['acc'])
 
         # TODO: encoder model summary í log skrá
         self.encoder_model = Model(encoder_inputs, encoder_states)

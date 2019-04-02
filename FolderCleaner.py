@@ -5,62 +5,55 @@ class FolderCleaner():
 
     def __init__(self, name, full=False):
         self.name = name
-        self.fullList = {"timestamp_recieved": {}, "content_recieved": {}, "timestamp_send": {}, "content_sent": {}}
-        #self.fullList = {"timestamp_recieved": [], "content_recieved": [], "timestamp_send": [], "content_sent": []}
+        self.fullList = {"timestamp_recieved": [], "content_recieved": [], "timestamp_send": [], "content_sent": []}
         self.index = 0
         self.full = full
 
 
+    # Only sent by you by reply
     def createMessageListSmaller(self, data):
         # Iterate all messages
         next = False
 
         for message in data["messages"]:
-            if next:
-                if "sender_name" in message and "content" in message and "timestamp_ms" in message:
-                    if len(message["content"]) < 11:
-                        self.fullList["timestamp_recieved"][str(self.index)] = message["timestamp_ms"]
-                        self.fullList["content_recieved"][str(self.index)] = message["content"]
-                        #self.fullList["timestamp_recieved"].append(message["timestamp_ms"])
-                        #self.fullList["content_recieved"].append(message["content"])
-                        self.index += 1
-
-                next = False
-
-            if "sender_name" in message:
-                if (message['sender_name'] == self.name):
-                    if (('content' in message) and ('timestamp_ms' in message)):
-                        if len(message["content"]) < 11:
+            if "sender_name" in message and "content" in message and "timestamp_ms" in message:
+                if len(message['content']) < 40:
+                    if next:
+                        self.fullList["timestamp_recieved"].append(message["timestamp_ms"])
+                        self.fullList["content_recieved"].append(message["content"])
+                        next = False
+                    else:
+                        if (message['sender_name'] == self.name):
                             next = True
-                            self.fullList["timestamp_recieved"][str(self.index)] = message["timestamp_ms"]
-                            self.fullList["content_recieved"][str(self.index)] = message["content"]
-                            #self.fullList["timestamp_send"].append(message["timestamp_ms"])
-                            #self.fullList["content_sent"].append(message["content"])
+                            self.fullList["timestamp_send"].append(message["timestamp_ms"])
+                            self.fullList["content_sent"].append(message["content"])
+        if len(self.fullList["content_sent"]) < len(self.fullList["content_recieved"]):
+            self.fullList["content_recieved"].pop();
+        elif len(self.fullList["content_sent"]) > len(self.fullList["content_recieved"]):
+            self.fullList["content_sent"].pop()
 
+
+    # all conversations taken
     def createMessageListBigger(self, data):
         # Iterate all messages
-        next = False
+        switch = True
 
         for message in data["messages"]:
-            if next:
-                if "sender_name" in message and "content" in message and "timestamp_ms" in message:
-                    if len(message["content"]) < 11:
-                        self.fullList["timestamp_recieved"][str(self.index)] = message["timestamp_ms"]
-                        self.fullList["content_recieved"][str(self.index)] = message["content"]
-                        #self.fullList["timestamp_recieved"] = message["timestamp_ms"]
-                        #self.fullList["content_recieved"].append(message["content"])
+            if "sender_name" in message and "content" in message and "timestamp_ms" in message:
+                if len(message['content']) < 40:
+                    if switch:
+                        self.fullList["timestamp_recieved"].append(message["timestamp_ms"])
+                        self.fullList["content_recieved"].append(message["content"])
                         self.index += 1
-
-                    next = False
-            else:
-                if "sender_name" in message:
-                    if (('content' in message) and ('timestamp_ms' in message)):
-                        if len(message["content"]) < 11:
-                            next = True
-                            self.fullList["timestamp_recieved"][str(self.index)] = message["timestamp_ms"]
-                            self.fullList["content_recieved"][str(self.index)] = message["content"]
-                            #self.fullList["timestamp_send"].append(message["timestamp_ms"])
-                            #self.fullList["content_sent"].append(message["content"])
+                        switch = False
+                    else:
+                        self.fullList["timestamp_send"].append(message["timestamp_ms"])
+                        self.fullList["content_sent"].append(message["content"])
+                        switch = True
+        if len(self.fullList["content_sent"]) < len(self.fullList["content_recieved"]):
+            self.fullList["content_recieved"].pop();
+        elif len(self.fullList["content_sent"]) > len(self.fullList["content_recieved"]):
+            self.fullList["content_sent"].pop()
 
 
 
