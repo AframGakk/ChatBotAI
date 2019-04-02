@@ -21,9 +21,12 @@ class ChatBot:
         self.dataset = pd.DataFrame({'content_recieved': recieved, 'content_sent': sent})
 
         self.preProcess()
+        self.setupDecoder()
+
+        self.loadModels()
 
 
-    def loadModel(self):
+    def loadModels(self):
         # load json and create model
         json_file = open('./data/model.json', 'r')
         loaded_model_json = json_file.read()
@@ -33,12 +36,34 @@ class ChatBot:
         self.model.load_weights("./data/model.h5")
         print("Loaded model from disk")
 
+
+        # load json and create model
+        json_file = open('./data/encoder_model.json', 'r')
+        loaded_model_json = json_file.read()
+        json_file.close()
+        self.encoder_model = model_from_json(loaded_model_json)
+        # load weights into new model
+        self.encoder_model.load_weights("./data/encoder_model.h5")
+        print("Loaded model from disk")
+
+        # load json and create model
+        json_file = open('./data/decoder_model.json', 'r')
+        loaded_model_json = json_file.read()
+        json_file.close()
+        self.decoder_model = model_from_json(loaded_model_json)
+        # load weights into new model
+        self.decoder_model.load_weights("./data/decoder_model.h5")
+        print("Loaded model from disk")
+
+
+
     def cleanMessages(self):
         # clean up icelandic letters from JSON
         for idx, item in enumerate(self.data[u'content_sent']):
             self.data[u'content_sent'][idx] = message_parse(item)
         for idx, item in enumerate(self.data[u'content_recieved']):
             self.data[u'content_recieved'][idx] = message_parse(item)
+
 
 
     def preProcess(self):
@@ -83,12 +108,12 @@ class ChatBot:
         lenght_list = []
         for l in self.dataset.content_recieved:
             lenght_list.append(len(l.split(' ')))
-        max_encoder_seq_length = np.max(lenght_list)
+        self.max_encoder_seq_length = np.max(lenght_list)
 
         lenght_list = []
         for l in self.dataset.content_sent:
             lenght_list.append(len(l.split(' ')))
-        max_decoder_seq_length = np.max(lenght_list)
+        self.max_decoder_seq_length = np.max(lenght_list)
 
         input_words_list = sorted(list(input_words))
         target_words_list = sorted(list(target_words))
@@ -103,6 +128,8 @@ class ChatBot:
 
 
         print("Pre processing DONE")
+
+
 
     def setupDecoder(self):
 
@@ -133,13 +160,7 @@ class ChatBot:
 
         self.model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
 
-        self.loadModel()
-
         self.model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['acc'])
-
-        # TODO: encoder model summary í log skrá
-        self.encoder_model = Model(encoder_inputs, encoder_states)
-        # encoder_model.summary()
 
         decoder_state_input_h = Input(shape=(50,))
         decoder_state_input_c = Input(shape=(50,))
@@ -150,6 +171,7 @@ class ChatBot:
         decoder_outputs2, state_h2, state_c2 = decoder_lstm(final_dex2, initial_state=decoder_states_inputs)
         decoder_states2 = [state_h2, state_c2]
         decoder_outputs2 = decoder_dense(decoder_outputs2)
+
         self.decoder_model = Model(
             [decoder_inputs] + decoder_states_inputs,
             [decoder_outputs2] + decoder_states2)
@@ -162,6 +184,18 @@ class ChatBot:
             (i, char) for char, i in self.target_token_index.items())
 
         print("Decoder setup DONE")
+
+
+
+    def encoded_msg_sequence(self, message):
+        encoder_message = np.zeros((1, self.max_encoder_seq_length), dtype='float32')
+
+        for t, word in enumerate(message.split()):
+            if word in self.input_token_index:
+                encoder_message[0, t] = self.input_token_index[word]
+        return encoder_message
+
+
 
     def decoder(self, input_seq):
         # Encode the input as state vectors.
@@ -187,7 +221,7 @@ class ChatBot:
             # Exit condition: either hit max length
             # or find stop character.
             if (sampled_char == '_END' or
-                    len(decoded_sentence) > 11):
+                    len(decoded_sentence) > 40):
                 stop_condition = True
 
             # Update the target sequence (of length 1).
@@ -199,9 +233,10 @@ class ChatBot:
 
         return decoded_sentence
 
+
+
     def send(self, message):
-        #input_seq = self.encoder_input_data[self.seq_index: self.seq_index + 1]
-        decoded_sentence = self.decoder(message)
-        print('-')
-        print('Input sentence:', self.dataset.content_sent[self.seq_index: self.seq_index + 1])
-        print('Decoded sentence:', decoded_sentence)
+        sequence = self.encoded_msg_sequence(message)
+        message = self.decoder(sequence).replace('_END', '')
+        return message
+

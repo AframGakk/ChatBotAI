@@ -1,4 +1,4 @@
-from TranslateBotTrainer import TranslateBotTrainer
+from TranslateBot.TranslateBotTrainer import TranslateBotTrainer
 
 trainer = TranslateBotTrainer('isl', epochs=20)
 trainer.preProcess()

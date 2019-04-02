@@ -1,4 +1,4 @@
-from TranslateBot import TranslateBot
+from TranslateBot.TranslateBot import TranslateBot
 import json
 
 

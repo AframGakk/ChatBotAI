@@ -1,12 +1,11 @@
 data/messages/
-data/*.json
 .idea/
 venv/
 saved_model.h5
 
-notes.txt
+data/*.txt
 eng-fra/
-data/*.h5
+
 model.json
 data/isl.json
 *.h5

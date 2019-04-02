@@ -13,6 +13,7 @@ from keras.models import model_from_json
 
 class ChatBotTrainer:
 
+
     def __init__(self, data, embedding_size = 256, batch_size = 64, epochs = 20):
         self.data = data
         self.embedding_size = embedding_size
@@ -29,12 +30,14 @@ class ChatBotTrainer:
         self.composeModel()
 
 
+
     def cleanMessages(self):
         # clean up icelandic letters from JSON
         for idx, item in enumerate(self.data[u'content_sent']):
             self.data[u'content_sent'][idx] = message_parse(item)
         for idx, item in enumerate(self.data[u'content_recieved']):
             self.data[u'content_recieved'][idx] = message_parse(item)
+
 
 
     def preProcess(self):
@@ -118,6 +121,8 @@ class ChatBotTrainer:
         np.save('./tmp/decoder_input_data', decoder_input_data)
         np.save('./tmp/decoder_target_data', decoder_target_data)
 
+
+
     def composeModel(self):
         self.encoder_inputs = Input(shape=(None,))
         en_x = Embedding(self.num_encoder_tokens, self.embedding_size)(self.encoder_inputs)
@@ -145,6 +150,7 @@ class ChatBotTrainer:
         self.model = Model([self.encoder_inputs, self.decoder_inputs], decoder_outputs)
 
         self.model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['acc'])
+
 
 
     def train(self):
@@ -213,6 +219,8 @@ class ChatBotTrainer:
         #print summary for the decoder
         self.modelSummary("Decoder", self.decoder_model)
 
+
+
     def decoder(self, input_seq):
         if not self.model:
             print("Please train the model with .train()")
@@ -254,6 +262,7 @@ class ChatBotTrainer:
         return decoded_sentence
 
 
+
     def test(self):
         encoder_input_data = np.load('./tmp/encoder_input_data.npy')
         for seq_index in [344, 786, 233, 990, 1010, 539, 745, 984]:
@@ -263,9 +272,13 @@ class ChatBotTrainer:
             print('Input sentence:', self.dataset.content_recieved[seq_index])
             print('Decoded sentence:', decoded_sentence)
 
+
+
     def printAllRecieved(self):
         for item in self.dataset.content_recieved:
             print(item)
+
+
 
     def saveModels(self):
         # serialize model to JSON
@@ -292,6 +305,8 @@ class ChatBotTrainer:
         self.decoder_model.save_weights("./data/decoder_model.h5")
         print("Saved model to disk")
 
+
+
     def loadModel(self):
         # load json and create model
         json_file = open('./data/model.json', 'r')
@@ -301,6 +316,8 @@ class ChatBotTrainer:
         # load weights into new model
         self.model.load_weights("./data/model.h5")
         print("Loaded model from disk")
+
+
 
     def modelSummary(self, model_name,model):
         if(model):
