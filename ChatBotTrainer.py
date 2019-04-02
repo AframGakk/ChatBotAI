@@ -1,13 +1,11 @@
 import pandas as pd
 import numpy as np
-import os
 import string
 from string import digits
 import re
 from MessageParser import message_parse
 from keras.layers import Input, LSTM, Embedding, Dense
 from keras.models import Model
-from SlackNotification import SlackNotify
 from keras.models import model_from_json
 
 
@@ -162,18 +160,12 @@ class ChatBotTrainer:
         decoder_input_data = np.load('./tmp/decoder_input_data.npy')
         decoder_target_data = np.load('./tmp/decoder_target_data.npy')
         try:
-            # if there is a trained model, keep training
-            #if os.path.isfile('./data/model.h5') and os.path.isfile('./data/model.json'):
-             #   self.loadModel()
-
             self.model.fit([encoder_input_data, decoder_input_data], decoder_target_data,
                       batch_size=self.batch_size,
                       epochs=self.epochs,
                       validation_split=0.08)
         except:
-            SlackNotify("The chat bot FAILED on model fitting!", "chat-bot")
-
-        SlackNotify("The chat bot has finished learning", "chat-bot")
+            print("There was a problem with the model fitting")
 
         # print the summary for the autoencoder
         self.modelSummary("autoencoder", self.model)
