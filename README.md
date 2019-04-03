@@ -21,6 +21,10 @@ You also need to add these python packages with pip
 * numpy
 * pandas
 
+#### Data
+If you choose to not train the bot with your own facebook convertations you can use our provided data and trained
+models. You need to download our resources [here](https://www.dropbox.com/sh/v66gr1bjvoqwj92/AABfyC7-YDrhtIojFy_fQduqa?dl=0). 
+The resources are quite large. When you downloaded the resources you need to place all the files in the data folder in the root of the project.
 
 #### Quick start
 To get started with the provided data and already trained models simpy execute the runChatBot.py. 
