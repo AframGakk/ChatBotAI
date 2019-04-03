@@ -1,16 +1,14 @@
 data/messages/
 .idea/
 venv/
-saved_model.h5
 data/trained_models/
 data/*.txt
 
-model.json
-data/isl.json
-*.h5
-tmp/*.npz
+data/*.h5
+tmp/*.npy
+data/*.json
 
-__pycache__
+__pycache__/
 trainedmodels
 
-#DevOps/
+DevOps/
